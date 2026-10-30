@@ -1,0 +1,29 @@
+name: Build Bootbox IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-ipa.yml'
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iOS application
+        run: |
+          xcodebuild -project Bootbox.xcodeproj -scheme Bootbox -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" CODE_SIGNING_ALLOWED=NO build
+      - name: Package unsigned IPA
+        run: |
+          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -type d | head -n 1)
+          test -n "$APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry Bootbox-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bootbox-unsigned-IPA
+          path: Bootbox-unsigned.ipa
+          if-no-files-found: error
